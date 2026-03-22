@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>The Living Company — Portfolio Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --pink:#E91E63;--pink-bg:#FFF0F5;--blue:#1565C0;--blue-bg:#EFF4FB;
+  --teal:#00897B;--teal-bg:#EDF7F5;
+  --sb-w:360px;--border:#E6E6EC;--text:#1a1a2e;--text-2:#6b7280;--text-3:#9ca3af;
+  --bg:#ffffff;--bg-2:#F7F7FB;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#e8e8f0}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;display:flex;height:100vh;height:100dvh}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:var(--sb-w);min-width:var(--sb-w);background:var(--bg);
+  display:flex;flex-direction:column;
+  border-right:1px solid var(--border);z-index:10;flex-shrink:0;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow:2px 0 20px rgba(0,0,0,.07);
+}
+#sidebar.collapsed{transform:translateX(calc(-1 * var(--sb-w)));min-width:0;pointer-events:none}
+
+/* ── HEADER ── */
+#sb-header{padding:18px 20px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+
+.tlc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.tlc-badge{background:var(--bg-2);border:1px solid var(--border);border-radius:9px;padding:6px 11px;text-align:right}
+.tlc-badge-num{font-size:20px;font-weight:700;color:var(--text);line-height:1}
+.tlc-badge-lbl{font-size:9px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-top:1px}
+
+/* Brand filter pills */
+.brand-filters{display:flex;flex-direction:column;gap:7px}
+.brand-btn{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;
+  border:1.5px solid var(--border);background:var(--bg-2);text-align:left;width:100%;
+  transition:background .15s,border-color .15s,opacity .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.brand-btn:not([class*="active-"]){opacity:.45}
+.brand-btn.active-scape{background:var(--pink-bg);border-color:rgba(233,30,99,.2)}
+.brand-btn.active-aveo {background:var(--blue-bg);border-color:rgba(21,101,192,.2)}
+.brand-btn.active-rtl  {background:var(--teal-bg);border-color:rgba(0,137,123,.2)}
+
+.brand-logo-cell{width:72px;height:26px;display:flex;align-items:center;flex-shrink:0}
+.brand-logo-cell img,.brand-logo-cell svg{max-width:100%;max-height:26px;object-fit:contain;object-position:left center}
+.brand-meta{flex:1;min-width:0}
+.brand-sector{font-size:10px;color:var(--text-3)}
+.brand-count{font-size:13px;font-weight:700;color:var(--text-3);flex-shrink:0;transition:color .15s}
+.brand-btn.active-scape .brand-count{color:var(--pink)}
+.brand-btn.active-aveo  .brand-count{color:var(--blue)}
+.brand-btn.active-rtl   .brand-count{color:var(--teal)}
+
+/* ── STATE FILTERS ── */
+#sb-states{padding:10px 20px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+.state-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.state-label{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-right:2px;flex-shrink:0}
+.state-pill{
+  padding:4px 9px;border-radius:20px;font-size:11px;font-weight:600;
+  border:1.5px solid var(--border);background:var(--bg-2);color:var(--text-3);
+  cursor:pointer;transition:background .13s,border-color .13s,color .13s;
+  -webkit-tap-highlight-color:transparent;line-height:1.4;
+}
+.state-pill.on{background:var(--text);border-color:var(--text);color:white}
+.state-pill-all{
+  padding:4px 9px;border-radius:20px;font-size:10px;font-weight:600;
+  border:1.5px solid var(--border);background:var(--bg-2);color:var(--text-3);
+  cursor:pointer;transition:background .13s,border-color .13s,color .13s;
+  -webkit-tap-highlight-color:transparent;line-height:1.4;white-space:nowrap;
+}
+.state-pill-all.all-on{background:var(--bg-2);border-color:var(--border);color:var(--text-3)}
+.state-pill-all.all-off{background:var(--text);border-color:var(--text);color:white}
+
+/* ── SEARCH ── */
+#sb-search{padding:12px 20px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.search-wrap{position:relative}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none}
+#search-input{
+  width:100%;padding:9px 32px 9px 32px;
+  background:var(--bg-2);border:1.5px solid var(--border);border-radius:9px;
+  color:var(--text);font-size:12.5px;font-family:inherit;outline:none;
+  -webkit-appearance:none;appearance:none;transition:border-color .15s
+}
+#search-input:focus{border-color:#bbb;background:var(--bg)}
+#search-input::placeholder{color:var(--text-3)}
+#search-clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-3);font-size:15px;display:none;padding:3px;line-height:1;-webkit-tap-highlight-color:transparent}
+.result-count{font-size:11px;color:var(--text-3);margin-top:7px}
+.result-count strong{color:var(--text-2);font-weight:600}
+
+/* ── LIST ── */
+#sb-list{flex:1;overflow-y:auto;padding:4px 0 24px;-webkit-overflow-scrolling:touch;background:var(--bg)}
+#sb-list::-webkit-scrollbar{width:3px}
+#sb-list::-webkit-scrollbar-track{background:transparent}
+#sb-list::-webkit-scrollbar-thumb{background:#ddd;border-radius:2px}
+.state-heading{padding:10px 20px 3px;font-size:9.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--text-3);background:var(--bg);position:sticky;top:0;z-index:2}
+.city-heading{padding:5px 20px 2px;font-size:10.5px;font-weight:500;color:var(--text-3);letter-spacing:.02em}
+.prop-row{display:flex;align-items:center;gap:9px;padding:7px 20px;cursor:pointer;border-left:3px solid transparent;transition:background .1s,border-left-color .1s;-webkit-tap-highlight-color:transparent}
+.prop-row:hover,.prop-row:active{background:var(--bg-2)}
+.prop-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-left:1px}
+.prop-name{font-size:12.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prop-suburb{font-size:10.5px;color:var(--text-3);margin-top:1px}
+.prop-row.selected .prop-name{color:var(--text);font-weight:600}
+
+/* ── FOOTER ── */
+#sb-footer{padding:10px 20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg-2)}
+.footer-url{font-size:10px;color:var(--text-3)}
+.footer-dots{display:flex;gap:5px}
+.footer-dot{width:6px;height:6px;border-radius:50%;transition:background .18s}
+
+/* ── COLLAPSE BUTTON ── */
+#toggle-btn{
+  position:absolute;left:var(--sb-w);top:50%;transform:translateY(-50%);
+  z-index:30;width:20px;height:48px;background:white;
+  border:1px solid var(--border);border-left:none;border-radius:0 7px 7px 0;
+  cursor:pointer;color:#bbb;font-size:10px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:3px 0 10px rgba(0,0,0,.08);
+  transition:left .28s cubic-bezier(.4,0,.2,1),color .15s;
+  -webkit-tap-highlight-color:transparent;padding:0
+}
+#toggle-btn:hover{color:#666}
+#toggle-btn.collapsed{left:0;border-left:1px solid var(--border);border-radius:0 7px 7px 0}
+
+/* ── MAP ── */
+#map{flex:1;height:100%;position:relative}
+.leaflet-control-zoom{border:none!important;box-shadow:0 2px 12px rgba(0,0,0,.12)!important}
+.leaflet-control-zoom-in,.leaflet-control-zoom-out{background:white!important;color:#555!important;border:1px solid #ddd!important;font-size:16px!important;line-height:26px!important;width:30px!important;height:30px!important}
+.leaflet-control-zoom-in:hover,.leaflet-control-zoom-out:hover{background:#f5f5f5!important;color:#222!important}
+.leaflet-control-attribution{background:rgba(255,255,255,.85)!important;color:#999!important;font-size:9px!important;backdrop-filter:blur(4px);padding:2px 6px!important}
+.leaflet-control-attribution a{color:#888!important}
+.leaflet-attribution-flag{display:none!important}
+
+/* ── POPUP ── */
+.tlc-popup .leaflet-popup-content-wrapper{padding:0;border-radius:14px;overflow:hidden;box-shadow:0 8px 36px rgba(0,0,0,.13);border:1px solid #eee}
+.tlc-popup .leaflet-popup-content{margin:0;width:auto!important}
+.tlc-popup .leaflet-popup-tip-container{display:none}
+.tlc-popup .leaflet-popup-close-button{color:#aaa!important;font-size:18px!important;padding:10px!important;top:4px!important;right:4px!important;z-index:2}
+.tlc-popup .leaflet-popup-close-button:hover{color:#333!important}
+.popup-inner{min-width:220px;font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+.popup-stripe{height:4px}
+.popup-body{padding:14px 16px 16px;background:#fff}
+.popup-brand{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.popup-name{font-size:15px;font-weight:700;color:#1a1a2e;line-height:1.25;margin-bottom:3px}
+.popup-loc{font-size:11.5px;color:#888;margin-bottom:13px}
+.popup-link{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;color:white;text-decoration:none;transition:opacity .15s}
+.popup-link:hover{opacity:.88}
+
+/* ── LOADING ── */
+#loading{position:fixed;inset:0;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;transition:opacity .35s}
+#loading.hidden{opacity:0;pointer-events:none}
+.spinner{width:36px;height:36px;border:3px solid #eee;border-top-color:var(--pink);border-radius:50%;animation:spin .75s linear infinite}
+.loading-txt{font-size:13px;color:#aaa}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{padding:28px 20px;text-align:center;color:var(--text-3);font-size:13px}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  /* Fix Safari grey bars: lock viewport */
+  html,body{position:fixed;inset:0;height:100%;overflow:hidden}
+  body{display:block}
+
+  /* Map fills entire screen */
+  #map{position:fixed;inset:0;width:100%;height:100%}
+
+  /* Hide desktop toggle */
+  #toggle-btn{display:none!important}
+
+  /* Sidebar = bottom drawer */
+  #sidebar{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    width:100%!important;min-width:unset!important;
+    height:82vh;
+    border-radius:20px 20px 0 0;
+    border-right:none;
+    border-top:1px solid var(--border);
+    box-shadow:0 -8px 40px rgba(0,0,0,.2);
+    z-index:50;
+    transform:translateY(105%);
+    transition:transform .32s cubic-bezier(.4,0,.2,1);
+  }
+  #sidebar.sb-open{transform:translateY(0)!important}
+
+  /* Drag handle */
+  #sb-header::before{
+    content:'';display:block;
+    width:40px;height:4px;border-radius:2px;
+    background:var(--border);margin:0 auto 14px;
+  }
+
+  /* FAB — always visible */
+  #mobile-fab{
+    display:flex!important;
+    position:fixed;
+    bottom:max(24px,env(safe-area-inset-bottom,24px));
+    left:50%;transform:translateX(-50%);
+    z-index:45;
+    background:var(--text);color:white;
+    border:none;border-radius:50px;
+    padding:15px 28px;gap:10px;
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+    font-size:15px;font-weight:600;letter-spacing:-.01em;
+    box-shadow:0 6px 28px rgba(0,0,0,.35);
+    cursor:pointer;align-items:center;
+    -webkit-tap-highlight-color:transparent;
+    white-space:nowrap;
+    transition:opacity .25s,transform .25s;
+  }
+  #mobile-fab.hidden{opacity:0!important;pointer-events:none!important;transform:translateX(-50%) translateY(10px)!important}
+  #mobile-fab .fab-dots{display:flex;gap:5px;align-items:center}
+  #mobile-fab .fab-dot{width:9px;height:9px;border-radius:50%}
+
+  /* Overlay */
+  #mobile-overlay{
+    display:block;
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.45);
+    z-index:49;
+    opacity:0;pointer-events:none;
+    transition:opacity .28s;
+  }
+  #mobile-overlay.visible{opacity:1!important;pointer-events:all!important}
+
+  /* Close button */
+  #sb-close{display:flex!important}
+
+  #sb-list{padding-bottom:40px}
+}
+@supports(padding-top:env(safe-area-inset-top)){
+  #sb-header{padding-top:max(18px,env(safe-area-inset-top))}
+  #sb-footer{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><div class="loading-txt">Loading portfolio map…</div></div>
+
+<!-- Desktop collapse toggle -->
+<button id="toggle-btn" title="Toggle sidebar">◀</button>
+
+<!-- Mobile: dark overlay behind sidebar -->
+<div id="mobile-overlay" onclick="closeSidebar()"></div>
+
+<!-- Mobile: floating button to open sidebar -->
+<button id="mobile-fab" onclick="openSidebar()">
+  <div class="fab-dots">
+    <div class="fab-dot" style="background:#E91E63"></div>
+    <div class="fab-dot" style="background:#1565C0"></div>
+    <div class="fab-dot" style="background:#00897B"></div>
+  </div>
+  Filter &amp; Search
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+    <circle cx="6" cy="6" r="4.5" stroke="white" stroke-width="1.3"/>
+    <path d="M9.5 9.5L12 12" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+  </svg>
+</button>
+
+<div id="sidebar">
+  <div id="sb-header">
+
+    <!-- TLC Header -->
+    <div class="tlc-top">
+      <div>
+        <!-- The Living Company wordmark -->
+        <svg width="200" height="34" viewBox="0 0 200 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <text x="0" y="20" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="700" font-size="16.5" letter-spacing="-0.6" fill="#1a1a2e">The Living Company</text>
+          <text x="1" y="31" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="500" font-size="8" letter-spacing="1.8" fill="#9ca3af">PORTFOLIO MAP · 2025</text>
+        </svg>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div class="tlc-badge">
+          <div class="tlc-badge-num" id="visible-count">109</div>
+          <div class="tlc-badge-lbl">locations</div>
+        </div>
+        <button id="sb-close" onclick="closeSidebar()" style="display:none;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:var(--bg-2);font-size:20px;color:var(--text-2);cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;margin-left:8px" title="Close">×</button>
+      </div>
+    </div>
+
+    <!-- Brand pills -->
+    <div class="brand-filters">
+
+      <!-- Scape -->
+      <button class="brand-btn active-scape" data-brand="scape" onclick="toggleBrand('scape')">
+        <div class="brand-logo-cell">
+          <!-- Scape wordmark — bold italic lowercase in brand pink/magenta -->
+          <svg width="70" height="26" viewBox="0 0 70 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="1" y="20" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="700" font-size="19" font-style="italic" letter-spacing="-0.5" fill="#E91E63">scape</text>
+          </svg>
+        </div>
+        <div class="brand-meta"><div class="brand-sector">Student Accommodation</div></div>
+        <div class="brand-count">41</div>
+      </button>
+
+      <!-- Aveo -->
+      <button class="brand-btn active-aveo" data-brand="aveo" onclick="toggleBrand('aveo')">
+        <div class="brand-logo-cell">
+          <img src="https://www.aveo.com.au/themes/custom/aveo/images/icons/logo.svg"
+               alt="Aveo" height="22" style="width:auto;max-width:68px"
+               onerror="this.style.display='none';document.getElementById('aveo-fallback').style.display='block'">
+          <svg id="aveo-fallback" style="display:none" width="52" height="22" viewBox="0 0 52 22" fill="none">
+            <text x="0" y="17" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="700" font-size="17" fill="#1565C0">aveo</text>
+          </svg>
+        </div>
+        <div class="brand-meta"><div class="brand-sector">Retirement Living</div></div>
+        <div class="brand-count">67</div>
+      </button>
+
+      <!-- Rent to Live Co -->
+      <button class="brand-btn active-rtl" data-brand="rtl" onclick="toggleBrand('rtl')">
+        <div class="brand-logo-cell">
+          <svg width="68" height="26" viewBox="0 0 68 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="11" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="700" font-size="10" letter-spacing="0" fill="#00897B">RENT TO</text>
+            <text x="0" y="24" font-family="'Plus Jakarta Sans',system-ui,sans-serif" font-weight="700" font-size="10" letter-spacing="0" fill="#00897B">LIVE CO.</text>
+          </svg>
+        </div>
+        <div class="brand-meta"><div class="brand-sector">Build to Rent</div></div>
+        <div class="brand-count">1</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- State filters -->
+  <div id="sb-states">
+    <div class="state-row">
+      <span class="state-label">State</span>
+      <button class="state-pill-all all-on" id="state-all-btn" onclick="toggleAllStates()">All</button>
+      <button class="state-pill on" data-state="QLD" onclick="toggleState('QLD')">QLD</button>
+      <button class="state-pill on" data-state="NSW" onclick="toggleState('NSW')">NSW</button>
+      <button class="state-pill on" data-state="VIC" onclick="toggleState('VIC')">VIC</button>
+      <button class="state-pill on" data-state="SA"  onclick="toggleState('SA')">SA</button>
+      <button class="state-pill on" data-state="WA"  onclick="toggleState('WA')">WA</button>
+      <button class="state-pill on" data-state="TAS" onclick="toggleState('TAS')">TAS</button>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div id="sb-search">
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <circle cx="6" cy="6" r="4.5" stroke="#ccc" stroke-width="1.3"/>
+        <path d="M9.5 9.5L12 12" stroke="#ccc" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <input id="search-input" type="text" placeholder="Search name, suburb or state…" oninput="onSearch(this.value)" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button id="search-clear" onclick="clearSearch()">×</button>
+    </div>
+    <div class="result-count"><strong id="result-num">109</strong> of 109 properties</div>
+  </div>
+
+  <div id="sb-list"></div>
+
+  <div id="sb-footer">
+    <div class="footer-url">thelivingcompany.com.au</div>
+    <div class="footer-dots">
+      <div class="footer-dot" id="fd-scape" style="background:var(--pink)"></div>
+      <div class="footer-dot" id="fd-aveo"  style="background:var(--blue)"></div>
+      <div class="footer-dot" id="fd-rtl"   style="background:var(--teal)"></div>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+const BRANDS={
+  scape:{label:'Scape',          sector:'Student Accommodation',color:'#E91E63',count:41},
+  aveo: {label:'Aveo',           sector:'Retirement Living',    color:'#1565C0',count:67},
+  rtl:  {label:'Rent to Live Co',sector:'Build to Rent',        color:'#00897B',count:1},
+};
+const STATE_ORDER=['QLD','NSW','VIC','SA','TAS'];
+const LOCATIONS=[
+  // SCAPE — SYDNEY
+  {id:1, name:'Scape Darling House',           brand:'scape',city:'Sydney',   state:'NSW',suburb:'Haymarket',     lat:-33.8797,lng:151.2012,url:'https://www.scape.com.au/sydney/darling-house/'},
+  {id:2, name:'Scape Darling Square',          brand:'scape',city:'Sydney',   state:'NSW',suburb:'Haymarket',     lat:-33.8793,lng:151.2004,url:'https://www.scape.com.au/sydney/darling-square/'},
+  {id:3, name:'Scape at University of Sydney', brand:'scape',city:'Sydney',   state:'NSW',suburb:'Darlington',    lat:-33.8892,lng:151.1937,url:'https://www.scape.com.au/sydney/university-of-sydney/'},
+  {id:4, name:'Boundary x Scape',             brand:'scape',city:'Sydney',   state:'NSW',suburb:'Chippendale',   lat:-33.8901,lng:151.1953,url:'https://www.scape.com.au/sydney/boundary/'},
+  {id:5, name:'Scape Redfern',                brand:'scape',city:'Sydney',   state:'NSW',suburb:'Redfern',       lat:-33.8928,lng:151.2037,url:'https://www.scape.com.au/sydney/redfern/'},
+  {id:6, name:'Scape Lachlan',                brand:'scape',city:'Sydney',   state:'NSW',suburb:'Zetland',       lat:-33.9053,lng:151.2075,url:'https://www.scape.com.au/sydney/lachlan/'},
+  {id:7, name:'Scape Ascot',                  brand:'scape',city:'Sydney',   state:'NSW',suburb:'Zetland',       lat:-33.9048,lng:151.2087,url:'https://www.scape.com.au/sydney/ascot/'},
+  {id:8, name:'Scape Quay',                   brand:'scape',city:'Sydney',   state:'NSW',suburb:'Haymarket',     lat:-33.8800,lng:151.2019,url:'https://www.scape.com.au/sydney/quay/'},
+  {id:9, name:'Scape Sydney Central',         brand:'scape',city:'Sydney',   state:'NSW',suburb:'Haymarket',     lat:-33.8808,lng:151.2007,url:'https://www.scape.com.au/sydney/sydney-central/'},
+  {id:10,name:'Broadway x Scape',             brand:'scape',city:'Sydney',   state:'NSW',suburb:'Broadway',      lat:-33.8858,lng:151.1990,url:'https://www.scape.com.au/sydney/broadway/'},
+  {id:11,name:'Scape Darlington',             brand:'scape',city:'Sydney',   state:'NSW',suburb:'Darlington',    lat:-33.8900,lng:151.1945,url:'https://www.scape.com.au/sydney/darlington/'},
+  {id:12,name:'Scape Abercrombie',            brand:'scape',city:'Sydney',   state:'NSW',suburb:'Chippendale',   lat:-33.8878,lng:151.1968,url:'https://www.scape.com.au/sydney/abercrombie/'},
+  {id:13,name:'Scape Cleveland',              brand:'scape',city:'Sydney',   state:'NSW',suburb:'Chippendale',   lat:-33.8887,lng:151.1976,url:'https://www.scape.com.au/sydney/cleveland/'},
+  {id:14,name:'Scape Glebe',                  brand:'scape',city:'Sydney',   state:'NSW',suburb:'Glebe',         lat:-33.8799,lng:151.1858,url:'https://www.scape.com.au/sydney/glebe/'},
+  {id:15,name:'Mountain x Scape',             brand:'scape',city:'Sydney',   state:'NSW',suburb:'Ultimo',        lat:-33.8842,lng:151.1993,url:'https://www.scape.com.au/sydney/mountain/'},
+  {id:16,name:'Scape Kingsford',              brand:'scape',city:'Sydney',   state:'NSW',suburb:'Kingsford',     lat:-33.9243,lng:151.2207,url:'https://www.scape.com.au/sydney/kingsford/'},
+  {id:17,name:'Scape Kensington',             brand:'scape',city:'Sydney',   state:'NSW',suburb:'Kensington',    lat:-33.9130,lng:151.2198,url:'https://www.scape.com.au/sydney/kensington/'},
+  // SCAPE — MELBOURNE
+  {id:18,name:'Scape Lincoln College',        brand:'scape',city:'Melbourne',state:'VIC',suburb:'Carlton',       lat:-37.7988,lng:144.9638,url:'https://www.scape.com.au/melbourne/lincoln-college/'},
+  {id:19,name:'Scape Peel',                   brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8097,lng:144.9538,url:'https://www.scape.com.au/melbourne/peel/'},
+  {id:20,name:'Scape Queensberry',            brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8035,lng:144.9555,url:'https://www.scape.com.au/melbourne/queensberry/'},
+  {id:21,name:'Scape Uni Square',             brand:'scape',city:'Melbourne',state:'VIC',suburb:'Carlton',       lat:-37.7995,lng:144.9648,url:'https://www.scape.com.au/melbourne/uni-square/'},
+  {id:22,name:'Scape La Trobe',               brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8065,lng:144.9558,url:'https://www.scape.com.au/melbourne/la-trobe/'},
+  {id:23,name:'Scape Swanston',               brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8080,lng:144.9653,url:'https://www.scape.com.au/melbourne/swanston/'},
+  {id:24,name:'Scape Melbourne Central',      brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8101,lng:144.9625,url:'https://www.scape.com.au/melbourne/melbourne-central/'},
+  {id:25,name:'Scape Victoria Street',        brand:'scape',city:'Melbourne',state:'VIC',suburb:'Carlton',       lat:-37.8020,lng:144.9663,url:'https://www.scape.com.au/melbourne/victoria-street/'},
+  {id:26,name:'Scape Franklin',               brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8068,lng:144.9608,url:'https://www.scape.com.au/melbourne/franklin/'},
+  {id:27,name:'Scape Berkeley 2',             brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne',     lat:-37.7985,lng:144.9560,url:'https://www.scape.com.au/melbourne/berkeley-2/'},
+  {id:28,name:'Scape Carlton',                brand:'scape',city:'Melbourne',state:'VIC',suburb:'Carlton',       lat:-37.8001,lng:144.9652,url:'https://www.scape.com.au/melbourne/carlton/'},
+  {id:29,name:'Scape Aurora',                 brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne CBD', lat:-37.8091,lng:144.9571,url:'https://www.scape.com.au/melbourne/aurora/'},
+  {id:30,name:'Scape Berkeley 1',             brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne',     lat:-37.7978,lng:144.9553,url:'https://www.scape.com.au/melbourne/berkeley-1/'},
+  {id:31,name:'Scape Cornell Place',          brand:'scape',city:'Melbourne',state:'VIC',suburb:'Melbourne',     lat:-37.8042,lng:144.9568,url:'https://www.scape.com.au/melbourne/cornell-place/'},
+  {id:32,name:'Scape Leicester',              brand:'scape',city:'Melbourne',state:'VIC',suburb:'Carlton',       lat:-37.8010,lng:144.9660,url:'https://www.scape.com.au/melbourne/leicester/'},
+  // SCAPE — BRISBANE
+  {id:33,name:'Scape Tribune',                brand:'scape',city:'Brisbane', state:'QLD',suburb:'South Brisbane', lat:-27.4763,lng:153.0185,url:'https://www.scape.com.au/brisbane/tribune/'},
+  {id:34,name:'Scape South Bank',             brand:'scape',city:'Brisbane', state:'QLD',suburb:'South Bank',     lat:-27.4780,lng:153.0205,url:'https://www.scape.com.au/brisbane/south-bank/'},
+  {id:35,name:'Scape St Lucia',               brand:'scape',city:'Brisbane', state:'QLD',suburb:'St Lucia',       lat:-27.4978,lng:153.0122,url:'https://www.scape.com.au/brisbane/st-lucia/'},
+  {id:36,name:'Scape Merivale',               brand:'scape',city:'Brisbane', state:'QLD',suburb:'South Brisbane', lat:-27.4758,lng:153.0178,url:'https://www.scape.com.au/brisbane/merivale/'},
+  {id:37,name:'Scape Toowong',                brand:'scape',city:'Brisbane', state:'QLD',suburb:'Toowong',        lat:-27.4852,lng:152.9842,url:'https://www.scape.com.au/brisbane/toowong/'},
+  {id:38,name:'Scape Regent',                 brand:'scape',city:'Brisbane', state:'QLD',suburb:'Brisbane City',  lat:-27.4623,lng:153.0297,url:'https://www.scape.com.au/brisbane/regent/'},
+  // SCAPE — ADELAIDE
+  {id:39,name:'Scape Adelaide Central',       brand:'scape',city:'Adelaide', state:'SA', suburb:'Adelaide CBD',   lat:-34.9285,lng:138.5978,url:'https://www.scape.com.au/adelaide/adelaide-central/'},
+  {id:40,name:'Scape Waymouth',               brand:'scape',city:'Adelaide', state:'SA', suburb:'Adelaide CBD',   lat:-34.9295,lng:138.5962,url:'https://www.scape.com.au/adelaide/waymouth/'},
+  {id:41,name:'Scape Adelaide University',    brand:'scape',city:'Adelaide', state:'SA', suburb:'North Terrace',  lat:-34.9205,lng:138.6055,url:'https://www.scape.com.au/adelaide/adelaide-university/'},
+  // AVEO — QLD
+  {id:42,name:'Aveo Albany Creek',                  brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Albany Creek',      lat:-27.3602,lng:152.9718,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/albany-creek/'},
+  {id:43,name:'Aveo Aspley',                        brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Aspley',            lat:-27.3748,lng:153.0218,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/aspley-court/'},
+  {id:44,name:'Aveo Bridgeman Downs',               brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Bridgeman Downs',   lat:-27.3637,lng:153.0205,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/bridgeman-downs/'},
+  {id:45,name:'Aveo Carindale',                     brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Carindale',         lat:-27.4897,lng:153.0985,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/parkside-carindale/'},
+  {id:46,name:'Aveo Durack',                        brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Durack',            lat:-27.5745,lng:152.9682,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/forest-grove/'},
+  {id:47,name:'Aveo Robertson',                     brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Robertson',         lat:-27.5247,lng:153.0495,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/robertson-park/'},
+  {id:48,name:'Aveo Rochedale South',               brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Rochedale South',   lat:-27.5580,lng:153.1038,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/rochedale-gardens/'},
+  {id:49,name:'Aveo Sunnybank',                     brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Sunnybank',         lat:-27.5708,lng:153.0462,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/sunnybank-green/'},
+  {id:50,name:'Aveo Cleveland',                     brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Cleveland',         lat:-27.5262,lng:153.2638,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/cleveland-heights/'},
+  {id:51,name:'Aveo Manly',                         brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Manly',             lat:-27.4602,lng:153.1772,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/manly-gardens/'},
+  {id:52,name:'Aveo Ormiston',                      brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Ormiston',          lat:-27.5262,lng:153.2308,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/cleveland-gardens/'},
+  {id:53,name:'Aveo Redland Bay',                   brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Redland Bay',       lat:-27.6152,lng:153.3043,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/redlands-by-the-bay/'},
+  {id:54,name:'Aveo Albion',                        brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Albion',            lat:-27.4218,lng:153.0398,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/the-clayfield/'},
+  {id:55,name:'Aveo Newmarket',                     brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Newmarket',         lat:-27.4297,lng:153.0110,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/newmarket-parklands/'},
+  {id:56,name:'Aveo Newstead',                      brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Newstead',          lat:-27.4470,lng:153.0535,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/the-newstead-residences/'},
+  {id:57,name:'Aveo Taringa',                       brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Taringa',           lat:-27.4975,lng:152.9878,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/taringa-parkside/'},
+  {id:58,name:'Aveo Springfield Central',           brand:'aveo',city:'Brisbane',       state:'QLD',suburb:'Springfield Central',lat:-27.6753,lng:152.9058,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/springfield-vista/'},
+  {id:59,name:'Aveo Caboolture South',              brand:'aveo',city:'Caboolture',     state:'QLD',suburb:'Caboolture South',   lat:-27.0898,lng:152.9555,url:'https://www.aveo.com.au/retirement-villages/qld/brisbane/the-sanctuary/'},
+  {id:60,name:'Aveo Ashmore (Amity Gardens)',       brand:'aveo',city:'Gold Coast',     state:'QLD',suburb:'Ashmore',           lat:-27.9838,lng:153.3712,url:'https://www.aveo.com.au/retirement-villages/qld/gold-coast/amity-gardens/'},
+  {id:61,name:'Aveo Ashmore (Domain Country Club)', brand:'aveo',city:'Gold Coast',     state:'QLD',suburb:'Ashmore',           lat:-27.9852,lng:153.3722,url:'https://www.aveo.com.au/retirement-villages/qld/gold-coast/the-domain-country-club/'},
+  {id:62,name:'Aveo Helensvale',                    brand:'aveo',city:'Gold Coast',     state:'QLD',suburb:'Helensvale',        lat:-27.9195,lng:153.3478,url:'https://www.aveo.com.au/retirement-villages/qld/gold-coast/tranquility-gardens/'},
+  {id:63,name:'Aveo Robina',                        brand:'aveo',city:'Gold Coast',     state:'QLD',suburb:'Robina',            lat:-28.0742,lng:153.3748,url:'https://www.aveo.com.au/retirement-villages/qld/gold-coast/robina-gardens/'},
+  {id:64,name:'Aveo Southport',                     brand:'aveo',city:'Gold Coast',     state:'QLD',suburb:'Southport',         lat:-27.9585,lng:153.3928,url:'https://www.aveo.com.au/retirement-villages/qld/gold-coast/southport-gardens/'},
+  {id:65,name:'Aveo Buderim',                       brand:'aveo',city:'Sunshine Coast', state:'QLD',suburb:'Buderim',           lat:-26.6878,lng:153.0572,url:'https://www.aveo.com.au/retirement-villages/qld/sunshine-coast/lindsay-gardens/'},
+  {id:66,name:'Aveo Palmview',                      brand:'aveo',city:'Sunshine Coast', state:'QLD',suburb:'Palmview',          lat:-26.7522,lng:153.0518,url:'https://www.aveo.com.au/retirement-villages/qld/sunshine-coast/sunset-palms/'},
+  {id:67,name:'Aveo Peregian Springs',              brand:'aveo',city:'Sunshine Coast', state:'QLD',suburb:'Peregian Springs',  lat:-26.4828,lng:153.0758,url:'https://www.aveo.com.au/retirement-villages/qld/sunshine-coast/peregian-springs-country-club/'},
+  {id:68,name:'Aveo Earlville',                     brand:'aveo',city:'Cairns',         state:'QLD',suburb:'Earlville',         lat:-16.9422,lng:145.7552,url:'https://www.aveo.com.au/retirement-villages/qld/north-queensland/the-parks/'},
+  // AVEO — NSW
+  {id:69,name:'Aveo Bella Vista',       brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Bella Vista',    lat:-33.7228,lng:150.9578,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/bella-vista-haven/'},
+  {id:70,name:'Aveo East Lindfield',    brand:'aveo',city:'Sydney',      state:'NSW',suburb:'East Lindfield', lat:-33.7738,lng:151.1762,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/lindfield-gardens/'},
+  {id:71,name:'Aveo St Ives',           brand:'aveo',city:'Sydney',      state:'NSW',suburb:'St Ives',        lat:-33.7342,lng:151.1733,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/fernbank/'},
+  {id:72,name:'Aveo Avalon Beach',      brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Avalon Beach',   lat:-33.6338,lng:151.3453,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/pittwater-palms/'},
+  {id:73,name:'Aveo Bayview Gardens',   brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Bayview',        lat:-33.6722,lng:151.2538,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/bayview-gardens/'},
+  {id:74,name:'Aveo Minkara Resort',    brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Bayview',        lat:-33.6730,lng:151.2548,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/minkara-resort/'},
+  {id:75,name:'Aveo Peninsula Gardens', brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Bayview',        lat:-33.6718,lng:151.2528,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/peninsula-gardens/'},
+  {id:76,name:'Aveo Mosman',            brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Mosman',         lat:-33.8273,lng:151.2453,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/the-manors-of-mosman/'},
+  {id:77,name:'Aveo Camden South',      brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Camden South',   lat:-34.0692,lng:150.7068,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/camden-downs/'},
+  {id:78,name:'Aveo Casula',            brand:'aveo',city:'Sydney',      state:'NSW',suburb:'Casula',         lat:-33.9628,lng:150.9033,url:'https://www.aveo.com.au/retirement-villages/nsw/sydney/maple-grove/'},
+  {id:79,name:'Aveo Shortland',         brand:'aveo',city:'Newcastle',   state:'NSW',suburb:'Shortland',      lat:-32.8988,lng:151.6902,url:'https://www.aveo.com.au/retirement-villages/nsw/newcastle/shortland-waters/'},
+  {id:80,name:'Aveo Banora Point (1)',  brand:'aveo',city:'Northern NSW',state:'NSW',suburb:'Banora Point',   lat:-28.2128,lng:153.5422,url:'https://www.aveo.com.au/retirement-villages/nsw/northern-new-south-wales/banora-point/'},
+  {id:81,name:'Aveo Banora Point (2)',  brand:'aveo',city:'Northern NSW',state:'NSW',suburb:'Banora Point',   lat:-28.2138,lng:153.5432,url:'https://www.aveo.com.au/retirement-villages/nsw/northern-new-south-wales/ocean-view/'},
+  {id:82,name:'Aveo Murwillumbah',      brand:'aveo',city:'Northern NSW',state:'NSW',suburb:'Murwillumbah',   lat:-28.3298,lng:153.4022,url:'https://www.aveo.com.au/retirement-villages/nsw/northern-new-south-wales/mountain-view/'},
+  {id:83,name:'Aveo St Georges Basin',  brand:'aveo',city:'South Coast', state:'NSW',suburb:'St Georges Basin',lat:-35.1268,lng:150.5882,url:'https://www.aveo.com.au/retirement-villages/nsw/south-coast/island-point/'},
+  // AVEO — VIC
+  {id:84, name:'Aveo Cheltenham',            brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Cheltenham',    lat:-37.9608,lng:145.0537,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/kingston-green/'},
+  {id:85, name:'Aveo Hampton',               brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Hampton',       lat:-37.9382,lng:145.0052,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/concierge-bayside/'},
+  {id:86, name:'Aveo Sandringham',           brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Sandringham',   lat:-37.9512,lng:145.0022,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/the-george/'},
+  {id:87, name:'Aveo Balwyn',                brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Balwyn',        lat:-37.8127,lng:145.0792,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/concierge-balwyn/'},
+  {id:88, name:'Aveo Burwood',               brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Burwood',       lat:-37.8567,lng:145.1087,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/fountain-court/'},
+  {id:89, name:'Aveo Croydon (Cherry Tree)', brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Croydon',       lat:-37.7903,lng:145.2817,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/cherry-tree-grove/'},
+  {id:90, name:'Aveo Croydon (Mingarra)',    brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Croydon',       lat:-37.7912,lng:145.2828,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/mingarra/'},
+  {id:91, name:'Aveo Doncaster',             brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Doncaster',     lat:-37.7882,lng:145.1233,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/domaine/'},
+  {id:92, name:'Aveo Doncaster East',        brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Doncaster East',lat:-37.7912,lng:145.1453,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/roseville/'},
+  {id:93, name:'Aveo Glen Waverley',         brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Glen Waverley', lat:-37.8773,lng:145.1617,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/oak-tree-hill/'},
+  {id:94, name:'Aveo Hawthorn',              brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Hawthorn',      lat:-37.8223,lng:145.0348,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/lisson-manor/'},
+  {id:95, name:'Aveo Kew',                   brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Kew',           lat:-37.8037,lng:145.0328,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/sackville-grange/'},
+  {id:96, name:'Aveo Toorak',                brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Toorak',        lat:-37.8428,lng:145.0147,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/toorak-place/'},
+  {id:97, name:'Aveo Heidelberg',            brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Heidelberg',    lat:-37.7568,lng:145.0703,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/streeton-park/'},
+  {id:98, name:'Aveo Macleod',               brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Macleod',       lat:-37.7342,lng:145.0798,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/springthorpe/'},
+  {id:99, name:'Aveo Northcote',             brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Northcote',     lat:-37.7727,lng:145.0108,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/veronica-gardens/'},
+  {id:100,name:'Aveo Princes Hill',          brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Princes Hill',  lat:-37.7878,lng:144.9737,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/redmond-park/'},
+  {id:101,name:'Aveo Sunbury',               brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Sunbury',       lat:-37.5768,lng:144.7272,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/cornish-grange/'},
+  {id:102,name:'Aveo Berwick',               brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Berwick',       lat:-38.0337,lng:145.3528,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/edrington-park/'},
+  {id:103,name:'Aveo Cranbourne',            brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Cranbourne',    lat:-38.0975,lng:145.2838,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/botanic-gardens/'},
+  {id:104,name:'Aveo Cranbourne East',       brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Cranbourne East',lat:-38.0922,lng:145.3173,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/hunters-green/'},
+  {id:105,name:'Aveo Hampton Park',          brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Hampton Park',  lat:-38.0297,lng:145.2572,url:'https://www.aveo.com.au/retirement-villages/vic/melbourne/coral-mews/'},
+  {id:106,name:'Aveo Safety Beach',          brand:'aveo',city:'Melbourne',state:'VIC',suburb:'Safety Beach',  lat:-38.3237,lng:145.0308,url:'https://www.aveo.com.au/retirement-villages/vic/mornington-peninsula/beachside-gardens/'},
+  // AVEO — TAS
+  {id:107,name:'Aveo Claremont',brand:'aveo',city:'Hobart',    state:'TAS',suburb:'Claremont',lat:-42.7978,lng:147.2478,url:'https://www.aveo.com.au/retirement-villages/tas/hobart/derwent-waters/'},
+  {id:108,name:'Aveo Mowbray',  brand:'aveo',city:'Launceston',state:'TAS',suburb:'Mowbray',  lat:-41.4178,lng:147.1488,url:'https://www.aveo.com.au/retirement-villages/tas/launceston/mowbray-links/'},
+  // RTL
+  {id:109,name:'Marrickville Timberyards',brand:'rtl',city:'Sydney',state:'NSW',suburb:'Marrickville',lat:-33.9110,lng:151.1554,url:'https://marrickvilletimberyards.com.au/'},
+];
+
+const appState={
+  filters:{scape:true,aveo:true,rtl:true},
+  stateFilters:{QLD:true,NSW:true,VIC:true,SA:true,WA:true,TAS:true},
+  search:'',selectedId:null
+};
+let map,groups={},markerMap={};
+
+window.addEventListener('load',()=>{
+  map=L.map('map',{center:[-25.5,134.0],zoom:5,zoomControl:false,minZoom:4,maxZoom:18});
+
+  // Light CartoDB Positron tiles
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    subdomains:'abcd',maxZoom:20,
+  }).addTo(map);
+
+  L.control.zoom({position:'bottomright'}).addTo(map);
+
+  ['scape','aveo','rtl'].forEach(brand=>{
+    const color=BRANDS[brand].color;
+    const grp=L.markerClusterGroup({
+      maxClusterRadius:55,showCoverageOnHover:false,spiderfyOnMaxZoom:true,zoomToBoundsOnClick:true,
+      iconCreateFunction:cluster=>{
+        const n=cluster.getChildCount();
+        return L.divIcon({
+          html:`<div style="width:34px;height:34px;background:${color};border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;font-weight:700;color:white;border:2.5px solid white;box-shadow:0 2px 10px rgba(0,0,0,.18)">${n}</div>`,
+          className:'',iconSize:[34,34],iconAnchor:[17,17],
+        });
+      },
+    });
+    map.addLayer(grp);
+    groups[brand]=grp;
+  });
+
+  LOCATIONS.forEach(loc=>{
+    const color=BRANDS[loc.brand].color;
+    const icon=L.divIcon({
+      html:`<div style="width:13px;height:13px;background:${color};border-radius:50%;border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,.2)"></div>`,
+      className:'',iconSize:[13,13],iconAnchor:[6.5,6.5],popupAnchor:[0,-12],
+    });
+    const marker=L.marker([loc.lat,loc.lng],{icon,title:loc.name});
+    marker.bindPopup(makePopup(loc),{className:'tlc-popup',maxWidth:260,closeButton:true});
+    groups[loc.brand].addLayer(marker);
+    markerMap[loc.id]=marker;
+  });
+
+  setTimeout(()=>{
+    document.getElementById('loading').classList.add('hidden');
+    setTimeout(()=>document.getElementById('loading').remove(),400);
+  },600);
+  renderList();
+});
+
+function makePopup(loc){
+  const b=BRANDS[loc.brand];
+  return`<div class="popup-inner">
+    <div class="popup-stripe" style="background:${b.color}"></div>
+    <div class="popup-body">
+      <div class="popup-brand" style="color:${b.color}">${b.label} · ${b.sector}</div>
+      <div class="popup-name">${loc.name}</div>
+      <div class="popup-loc">${loc.suburb}, ${loc.city} ${loc.state}</div>
+      <a class="popup-link" href="${loc.url}" target="_blank" rel="noopener noreferrer" style="background:${b.color}">
+        View Property
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M6 2l3 3-3 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </div>`;
+}
+
+// Rebuild map markers to match current brand + state filters
+function syncMarkers(){
+  // Remove all group layers from map, clear them, re-add matching markers
+  Object.values(groups).forEach(g=>{ if(map.hasLayer(g)) map.removeLayer(g); g.clearLayers(); });
+  LOCATIONS.forEach(loc=>{
+    if(!appState.filters[loc.brand]) return;
+    if(!appState.stateFilters[loc.state]) return;
+    const color=BRANDS[loc.brand].color;
+    const icon=L.divIcon({
+      html:`<div style="width:13px;height:13px;background:${color};border-radius:50%;border:2.5px solid white;box-shadow:0 1px 6px rgba(0,0,0,.2)"></div>`,
+      className:'',iconSize:[13,13],iconAnchor:[6.5,6.5],popupAnchor:[0,-12],
+    });
+    markerMap[loc.id].setIcon(icon);
+    groups[loc.brand].addLayer(markerMap[loc.id]);
+  });
+  // Re-add active brand groups to map
+  Object.entries(groups).forEach(([brand,g])=>{
+    if(appState.filters[brand]) map.addLayer(g);
+  });
+}
+
+function toggleBrand(brand){
+  appState.filters[brand]=!appState.filters[brand];
+  const on=appState.filters[brand];
+  document.querySelector(`[data-brand="${brand}"]`).classList.toggle(`active-${brand}`,on);
+  const cols={scape:'var(--pink)',aveo:'var(--blue)',rtl:'var(--teal)'};
+  document.getElementById(`fd-${brand}`).style.background=on?cols[brand]:'#ddd';
+  syncMarkers();
+  renderList();
+}
+
+// State filter toggle
+const STATE_BOUNDS={
+  QLD:{lat:-20.0,lng:145.0,zoom:6},
+  NSW:{lat:-33.5,lng:147.0,zoom:6},
+  VIC:{lat:-37.2,lng:144.5,zoom:7},
+  SA: {lat:-33.0,lng:138.5,zoom:6},
+  WA: {lat:-28.0,lng:121.0,zoom:5},
+  TAS:{lat:-42.0,lng:146.5,zoom:7},
+};
+function toggleState(state){
+  // If this is the only one on, turn everything back on instead of going to 0
+  const onStates=Object.keys(appState.stateFilters).filter(s=>appState.stateFilters[s]);
+  if(onStates.length===1 && onStates[0]===state){
+    // Re-activate all
+    Object.keys(appState.stateFilters).forEach(s=>appState.stateFilters[s]=true);
+    document.querySelectorAll('.state-pill').forEach(b=>b.classList.add('on'));
+    updateAllBtn();syncMarkers();renderList();return;
+  }
+  appState.stateFilters[state]=!appState.stateFilters[state];
+  document.querySelector(`.state-pill[data-state="${state}"]`).classList.toggle('on',appState.stateFilters[state]);
+  updateAllBtn();
+  // Fly to state if turning ON and it's now the only active one
+  const nowOn=Object.keys(appState.stateFilters).filter(s=>appState.stateFilters[s]);
+  if(appState.stateFilters[state] && nowOn.length===1 && STATE_BOUNDS[state]){
+    const b=STATE_BOUNDS[state];
+    map.flyTo([b.lat,b.lng],b.zoom,{animate:true,duration:1.0});
+  }
+  syncMarkers();renderList();
+}
+function toggleAllStates(){
+  const allOn=Object.values(appState.stateFilters).every(v=>v);
+  if(allOn){
+    // Turn all off except none — instead isolate to nothing, or do nothing. Better: cycle to "select one" mode. Just reset to all on.
+    // Treat "All" button as reset
+    Object.keys(appState.stateFilters).forEach(s=>appState.stateFilters[s]=true);
+  } else {
+    Object.keys(appState.stateFilters).forEach(s=>appState.stateFilters[s]=true);
+  }
+  document.querySelectorAll('.state-pill').forEach(b=>b.classList.add('on'));
+  updateAllBtn();
+  map.flyTo([-25.5,134.0],5,{animate:true,duration:1.1});
+  syncMarkers();renderList();
+}
+function updateAllBtn(){
+  const allOn=Object.values(appState.stateFilters).every(v=>v);
+  const btn=document.getElementById('state-all-btn');
+  btn.className='state-pill-all '+(allOn?'all-on':'all-off');
+  btn.textContent=allOn?'All':'Reset';
+}
+function onSearch(val){appState.search=val;document.getElementById('search-clear').style.display=val?'block':'none';renderList()}
+function clearSearch(){appState.search='';document.getElementById('search-input').value='';document.getElementById('search-clear').style.display='none';renderList()}
+function flyTo(id){
+  const loc=LOCATIONS.find(l=>l.id===id);if(!loc)return;
+  appState.selectedId=id;
+  map.flyTo([loc.lat,loc.lng],16,{animate:true,duration:1.2});
+  setTimeout(()=>{try{markerMap[id].openPopup()}catch(e){}},1350);
+  if(isMobile())closeSidebar();
+  renderList();
+}
+const isMobile=()=>window.innerWidth<=768;
+
+// ── SIDEBAR OPEN/CLOSE ────────────────────────────────────────────────────────
+// Mobile: drawer slides up from bottom. Desktop: sidebar collapses left.
+// We toggle CSS classes only — no JS style manipulation — so CSS stays in control.
+
+function openSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(isMobile()){
+    sb.classList.add('sb-open');
+    sb.classList.remove('collapsed');
+    document.getElementById('mobile-overlay').classList.add('visible');
+    document.getElementById('mobile-fab').classList.add('hidden');
+  } else {
+    sb.classList.remove('collapsed');
+    const btn=document.getElementById('toggle-btn');
+    btn.classList.remove('collapsed');
+    btn.textContent='◀';
+    btn.style.left='var(--sb-w)';
+  }
+  setTimeout(()=>{try{map.invalidateSize()}catch(e){}},340);
+}
+
+function closeSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(isMobile()){
+    sb.classList.remove('sb-open');
+    document.getElementById('mobile-overlay').classList.remove('visible');
+    document.getElementById('mobile-fab').classList.remove('hidden');
+    setTimeout(()=>{try{map.invalidateSize()}catch(e){}},340);
+  } else {
+    sb.classList.add('collapsed');
+    const btn=document.getElementById('toggle-btn');
+    btn.classList.add('collapsed');
+    btn.textContent='▶';
+    btn.style.left='0';
+    setTimeout(()=>{try{map.invalidateSize()}catch(e){}},340);
+  }
+}
+
+function setSidebarCollapsed(c){ c ? closeSidebar() : openSidebar(); }
+
+// Wire up desktop toggle
+document.getElementById('toggle-btn').addEventListener('click',()=>{
+  document.getElementById('sidebar').classList.contains('collapsed') ? openSidebar() : closeSidebar();
+});
+
+function renderList(){
+  const q=appState.search.toLowerCase().trim();
+  const filtered=LOCATIONS.filter(loc=>{
+    if(!appState.filters[loc.brand])return false;
+    if(!appState.stateFilters[loc.state])return false;
+    if(!q)return true;
+    return loc.name.toLowerCase().includes(q)||loc.suburb.toLowerCase().includes(q)||
+           loc.city.toLowerCase().includes(q)||loc.state.toLowerCase().includes(q);
+  });
+  document.getElementById('visible-count').textContent=filtered.length;
+  document.getElementById('result-num').textContent=filtered.length;
+  const grouped={};
+  filtered.forEach(loc=>{(grouped[loc.state]??={})[loc.city]??=[];grouped[loc.state][loc.city].push(loc)});
+  const states=Object.keys(grouped).sort((a,b)=>STATE_ORDER.indexOf(a)-STATE_ORDER.indexOf(b));
+  let html='';
+  if(!filtered.length){html='<div class="empty">No properties match your search.</div>'}
+  else{
+    states.forEach(s=>{
+      html+=`<div class="state-heading">${s} · ${Object.values(grouped[s]).flat().length}</div>`;
+      Object.entries(grouped[s]).forEach(([city,locs])=>{
+        html+=`<div class="city-heading">${city}</div>`;
+        locs.forEach(loc=>{
+          const color=BRANDS[loc.brand].color,sel=appState.selectedId===loc.id;
+          html+=`<div class="prop-row${sel?' selected':''}" style="${sel?`background:${color}0d;`:''}border-left-color:${sel?color:'transparent'}" onclick="flyTo(${loc.id})">
+            <div class="prop-dot" style="background:${color}${sel?`;box-shadow:0 0 0 2.5px ${color}30`:''}"></div>
+            <div style="flex:1;min-width:0"><div class="prop-name">${loc.name}</div><div class="prop-suburb">${loc.suburb}</div></div>
+            ${sel?`<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5 2l3 3-3 3" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`:''}
+          </div>`;
+        });
+      });
+    });
+  }
+  document.getElementById('sb-list').innerHTML=html;
+}
+</script>
+</body>
+</html>
